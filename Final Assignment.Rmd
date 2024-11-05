@@ -1,0 +1,580 @@
+---
+title: "Final Assignment"
+author: "Chatwipa Surapat"
+date: "2024-10-17"
+classoption: a4paper
+geometry: margin=2cm
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+In this report, a data set of the local penguin population in the Palmer Archipelago on Anvers Island, Antarctica is used to estimate probabilities within the population, identify suitable parameters for sex prediction, and analyze the impact of the location on their physical characteristics.
+
+```{r, include=FALSE}
+library(palmerpenguins)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(gridExtra)
+library(grid)
+
+# Load data set
+data("penguins")
+ori_penguins <- na.omit(penguins)
+
+# Select by student number
+n <- 200
+my.student.number <- 240215323
+set.seed(my.student.number)
+penguins <- ori_penguins[sample(nrow(ori_penguins), n), ]
+```
+
+# Data exploration
+The original penguin data set contained 333 penguins, but a random subset of 200 penguins was selected for analysis. This data set contains 8 variables, providing information about the penguins' living area and their physical characteristics, including species, habitat island, bill length, bill depth, flipper length, body mass, sex, and year of observation.
+
+## 1.1 Species and habitant
+The charts below illustrates penguin population distribution observed between 2007 to 2009. The total counts for each year remain relatively stable over three years. In addition, only the Adelie species is found across all islands while Chinstrap and Gentoo species appear only in specific islands.
+
+```{r,fig.align = 'center', echo = FALSE, fig.width=10, fig.height=3}
+custom_colors <- c("Torgersen" = "#bdc9e1",
+                   "Dream" = "#67a9cf", 
+                   "Biscoe" = "#02818a")
+
+year_habitat <- penguins %>% group_by(island, year) %>%
+  summarise(total_count = n(),
+            .groups = 'drop')
+
+year_plot <- ggplot(year_habitat, aes(x = year, y = total_count, fill = island)) +
+  geom_bar(stat = "identity", position = "stack") +
+  scale_x_continuous(breaks = c(2007, 2008, 2009)) +
+  geom_text(aes(label = total_count), position = position_stack(vjust = 0.5), color = "white", size = 3) +
+  labs(x = "Year", y = "Number of penguins") +
+  theme_minimal() +
+  theme(plot.margin = unit(c(1, 0.5, 0.5, 0.5), "cm")) +
+  scale_y_continuous(limits = c(0, 100), breaks = seq(0, 100, by = 20)) +
+  scale_fill_manual(values = custom_colors)
+
+habitat_species <- penguins %>% group_by(island, species) %>%
+  summarise(total_count = n(),
+            .groups = 'drop')
+
+species_plot <- ggplot(habitat_species, aes(x = species, y = total_count, fill = island)) +
+  geom_bar(stat = "identity", position = "stack") +
+  geom_text(aes(label = total_count), position = position_stack(vjust = 0.5), color = "white", size = 3) +
+  labs(x = "Species", y = "Number of penguins") +
+  theme_minimal() +
+  theme(plot.margin = unit(c(1, 0.5, 0.5, 0.5), "cm")) +
+  scale_y_continuous(limits = c(0, 100), breaks = seq(0, 100, by = 20)) +
+  scale_fill_manual(values = custom_colors)
+
+grid.arrange(year_plot, species_plot, ncol = 2, nrow = 1)
+grid.text("Penguin Population Distribution by Island and Species (2007 - 2009)", 
+          x = 0.5, y = 0.98, gp = gpar(fontsize = 12, fontface = "bold"))
+```
+## 1.2 Island and physical characteristics
+Refer to Section 1.1. The Adelie species is the only species found across all islands allow us to explore the impact of island location on their physical characteristics. The box plot shows that the overall medians of all variables are fairly similar across the islands, especially in body mass parameters. However, flipper length shows a trend of median slightly shifting across different islands.
+
+```{r,fig.align = 'center', echo = FALSE, fig.width=10, fig.height=2}
+custom_colors <- c("Torgersen" = "#bdc9e1",
+                   "Dream" = "#67a9cf", 
+                   "Biscoe" = "#02818a")
+df_adelie <- penguins[penguins$species == "Adelie", ]
+
+body_mass_plot <- ggplot(df_adelie, aes(x = species, y = body_mass_g, fill = island)) + 
+  geom_boxplot(position = position_dodge(width = 0.8)) + 
+  labs(title = "Body Mass",
+       x = "Species",
+       y = "Body Mass (g)") + 
+  theme_minimal() + 
+  theme(plot.title = element_text(hjust = 0.5),
+        panel.border = element_rect(color = "black", fill = NA, linewidth = 1),
+        legend.position = "right") +
+  scale_fill_manual(values = custom_colors)
+
+bill_length_plot <- ggplot(df_adelie, aes(x = species, y = bill_length_mm, fill = island)) + 
+  geom_boxplot(position = position_dodge(width = 0.8)) + 
+  labs(title = "Bill Length",
+       x = "Species",
+       y = "Bill Length (mm)") +
+  theme_minimal() + 
+  theme(plot.title = element_text(hjust = 0.5),
+        panel.border = element_rect(color = "black", fill = NA, linewidth = 1),
+        legend.position = "right") +
+  scale_fill_manual(values = custom_colors)
+
+bill_depth_plot <- ggplot(df_adelie, aes(x = species, y = bill_depth_mm, fill = island)) + 
+  geom_boxplot(position = position_dodge(width = 0.8)) + 
+  labs(title = "Bill Depth",
+       x = "Species",
+       y = "Bill Depth (mm)") +
+  theme_minimal() + 
+  theme(plot.title = element_text(hjust = 0.5),
+        panel.border = element_rect(color = "black", fill = NA, linewidth = 1),
+        legend.position = "right") +
+  scale_fill_manual(values = custom_colors)
+
+flipper_plot <- ggplot(df_adelie, aes(x = species, y = flipper_length_mm, fill = island)) + 
+  geom_boxplot(position = position_dodge(width = 0.8)) + 
+  labs(title = "Flipper Length",
+       x = "Species",
+       y = "Flipper Length (mm)") +
+  theme_minimal() + 
+  theme(plot.title = element_text(hjust = 0.5),
+        panel.border = element_rect(color = "black", fill = NA, linewidth = 1),
+        legend.position = "right") +
+  scale_fill_manual(values = custom_colors)
+
+grid.arrange(body_mass_plot, bill_length_plot, ncol = 2)
+grid.arrange(bill_depth_plot, flipper_plot, ncol = 2)
+```
+
+## 1.3 Species and physical characteristics segmented by sex
+The box plot below shows the distribution of four parameters including body mass, bill length, bill depth and flipper length in each species, segmented by sex. The Gentoo species is easily distinguishable from the other species by its overall size and bill depth, as it has the highest body mass, the longest flipper length, but a relatively shallow bill in both female and male.
+
+```{r,fig.align = 'center', echo = FALSE, fig.width=10, fig.height=2}
+custom_colors <- c("female" = "#f1a340",
+                   "male" = "#998ec3")
+
+body_mass_plot <- ggplot(penguins, aes(x = species, y = body_mass_g, fill = sex)) + 
+  geom_boxplot(position = position_dodge(width = 0.8)) + 
+  labs(title = "Body Mass",
+       x = "Species",
+       y = "Body Mass (g)") + 
+  theme_minimal() + 
+  theme(plot.title = element_text(hjust = 0.5),
+        panel.border = element_rect(color = "black", fill = NA, linewidth = 1),
+        legend.position = "right") +
+  scale_fill_manual(values = custom_colors)
+
+bill_length_plot <- ggplot(penguins, aes(x = species, y = bill_length_mm, fill = sex)) + 
+  geom_boxplot(position = position_dodge(width = 0.8)) + 
+  labs(title = "Bill Length",
+       x = "Species",
+       y = "Bill Length (mm)") +
+  theme_minimal() + 
+  theme(plot.title = element_text(hjust = 0.5),
+        panel.border = element_rect(color = "black", fill = NA, linewidth = 1),
+        legend.position = "right") +
+  scale_fill_manual(values = custom_colors)
+
+bill_depth_plot <- ggplot(penguins, aes(x = species, y = bill_depth_mm, fill = sex)) + 
+  geom_boxplot(position = position_dodge(width = 0.8)) + 
+  labs(title = "Bill Depth",
+       x = "Species",
+       y = "Bill Depth (mm)") +
+  theme_minimal() + 
+  theme(plot.title = element_text(hjust = 0.5),
+        panel.border = element_rect(color = "black", fill = NA, linewidth = 1),
+        legend.position = "right") +
+  scale_fill_manual(values = custom_colors)
+
+flipper_plot <- ggplot(penguins, aes(x = species, y = flipper_length_mm, fill = sex)) + 
+  geom_boxplot(position = position_dodge(width = 0.8)) + 
+  labs(title = "Flipper Length",
+       x = "Species",
+       y = "Flipper Length (mm)") +
+  theme_minimal() + 
+  theme(plot.title = element_text(hjust = 0.5),
+        panel.border = element_rect(color = "black", fill = NA, linewidth = 1),
+        legend.position = "right") +
+  scale_fill_manual(values = custom_colors)
+
+grid.arrange(body_mass_plot, bill_length_plot, nrow = 1, ncol = 2)
+grid.arrange(bill_depth_plot, flipper_plot, nrow = 1, ncol = 2)
+
+```
+Focusing only the body mass of each species, the Gentoo species shows the highest body mass, with a greater of minimum, median, and maximum values compared to the Adelie and Chinstrap species. Refer to the statistic summary below, a group of Adelie and Chinstrap penguins have interquartile range of 525 grams, which is smaller than the Gentoo penguins. This indicates that Adelie and Chinstrap penguins have lower variability of body mass which located around medians compared to Gentoo penguins.
+
+```{r,fig.align = 'center', echo = FALSE}
+# Adelie and Chinstrap penguins
+other_mass <- penguins[penguins$species != "Gentoo", ]
+other_summary <- summary(other_mass$body_mass_g)
+other_iqr <- IQR(other_mass$body_mass_g, na.rm = TRUE)
+
+# Gentoo penguins
+gentoo_mass <- penguins[penguins$species == "Gentoo", ]
+gentoo_summary <- summary(gentoo_mass$body_mass_g)
+gentoo_iqr <- IQR(gentoo_mass$body_mass_g, na.rm = TRUE)
+
+# Create a data frame for reporting the summary statistics
+report_table <- data.frame(
+  Statistic = c("Min", "1st Qu.", "Median", "Mean", "3rd Qu.", "Max", "IQR"),
+  "Adelie and Chinstrap" = c(other_summary[1], other_summary[2], other_summary[3], other_summary[4], other_summary[5], other_summary[6], other_iqr),
+  "Gentoo" = c(gentoo_summary[1], gentoo_summary[2], gentoo_summary[3], gentoo_summary[4], gentoo_summary[5], gentoo_summary[6], gentoo_iqr)
+)
+
+print(report_table, row.names = FALSE)
+```
+However, distinguish the species using only one parameter might not be an effective way since they are some overlapping of parameters in each species. The scatter plot below shows that combination of bill depth and bill length or flipper length and bill length are the parameters that have high potential to distinguish each species as we can see the cluster of group when plotting their combination.
+
+```{r,fig.align = 'center', echo = FALSE, fig.width=10, fig.height=3}
+bill_bill_plot <- ggplot(penguins, aes(x=bill_length_mm, y=bill_depth_mm, 
+                     color=species, shape = species)) +
+  geom_point() +
+  labs(title = "Bill depth and Bill length",
+       x = "Bill length (mm)",
+       y = "Bill depth (mm)") +
+  theme_minimal() + theme(plot.title = element_text(hjust = 0.5))
+
+flip_bill_plot <- ggplot(penguins, aes(x=bill_length_mm, y=flipper_length_mm, 
+                     color=species, shape = species)) +
+  geom_point() +
+  labs(title = "Flipper Length and Bill length",
+       x = "Bill length (mm)",
+       y = "Flipper Length (mm)") +
+  theme_minimal() + theme(plot.title = element_text(hjust = 0.5))
+
+grid.arrange(bill_bill_plot, flip_bill_plot, ncol = 2)
+```
+## 1.4 Physical Characteristics Distribution
+The distribution plots below show the overall distribution of each physical characteristics parameters. According to the plots, the distribution is separated into two group in most parameters except flipper length that individual species have their own distribution. 
+
+```{r,fig.align = 'center', echo = FALSE, fig.width=10, fig.height=3.5}
+hist_bodymass_plot <- ggplot(penguins, aes(x = body_mass_g, fill = species)) + 
+  geom_density(color = "black", alpha = 0.7) +
+  labs(title = "Body Mass by Species", 
+       x = "Body Mass (g)",
+       y = "Count") +
+  theme_minimal() +
+  theme(legend.position = "right") +
+  scale_fill_manual(values = c("#fc8d59", "#ffffbf", "#99d594")) +
+  theme(plot.title = element_text(hjust = 0.5))
+
+hist_billlength_plot <- ggplot(penguins, aes(x = bill_length_mm, fill = species)) + 
+  geom_density(color = "black", alpha = 0.7) +
+  labs(title = "Bill Length by Species", 
+       x = "Bill Length (mm)",
+       y = "Count") +
+  theme_minimal() +
+  theme(legend.position = "right") +
+  scale_fill_manual(values = c("#fc8d59", "#ffffbf", "#99d594")) +
+  theme(plot.title = element_text(hjust = 0.5))
+
+hist_billdepth_plot <- ggplot(penguins, aes(x = bill_depth_mm, fill = species)) + 
+  geom_density(color = "black", alpha = 0.7) +
+  labs(title = "Bill Depth by Species", 
+       x = "Bill Depth (mm)",
+       y = "Count") +
+  theme_minimal() +
+  theme(legend.position = "right") +
+  scale_fill_manual(values = c("#fc8d59", "#ffffbf", "#99d594")) +
+  theme(plot.title = element_text(hjust = 0.5))
+
+hist_flipper_plot <- ggplot(penguins, aes(x = flipper_length_mm, fill = species)) + 
+  geom_density(color = "black", alpha = 0.7) +
+  labs(title = "Flipper Length by Species", 
+       x = "Flipper Length (mm)",
+       y = "Count") +
+  theme_minimal() +
+  theme(legend.position = "right") +
+  scale_fill_manual(values = c("#fc8d59", "#ffffbf", "#99d594")) +
+  theme(plot.title = element_text(hjust = 0.5))
+
+grid.arrange(hist_bodymass_plot, hist_billlength_plot, hist_billdepth_plot, hist_flipper_plot, ncol = 2, nrow = 2)
+```
+
+# Estimate probabilities for the penguin population
+Refer to Section 1.4. The bill lengths of Chinstrap and Gentoo penguins show overlapping distributions, while the Adelie species forms a distinct distribution. This suggests that Chinstrap and Gentoo could potentially be modeled using the same distribution, whereas the Adelie species may require a separate model.
+
+To estimate probabilities, we first assume that each sample follows a normal distribution. Then, we calculate the maximum likelihood estimates for the normal distribution and overlay the normal curves onto the sample histograms for evaluation.
+
+## 2.1 Maximum likelihood of normal distribution
+Refer to the previous section, we assume that this data can be modelled as realisations of independent and identically distributed (IID) random variables $X_1,\ldots,X_n$ where each $X_i\sim~\text{N}(\mu,\sigma^2)$.
+
+**Logarithm of the probability density function:**
+  \begin{align*}
+  f(x|\mu, \sigma^2) &= \frac{1}{\sigma\sqrt{2\pi}} e^{-\frac{(x - \mu)^2}{2\sigma^2}} \\
+  \log f(x|\mu, \sigma^2) &= \log\left(\frac{1}{\sigma\sqrt{2\pi}} e^{-\frac{(x - \mu)^2}{2\sigma^2}}\right) \\
+  &= -\frac{1}{2}\log(2\pi) - \log\sigma - \frac{(x - \mu)^2}{2\sigma^2}
+  \end{align*}
+
+**Log-likelihood:**
+  \begin{align*}
+   \ell(x|\mu, \sigma^2) &= \sum_{i=1}^n \log f(x_i|\mu, \sigma^2) \\
+   &= -\frac{n}{2}\log(2\pi) - n\log\sigma - \frac{1}{2\sigma^2} \sum_{i=1}^n (x_i - \mu)^2
+  \end{align*}
+
+**Find the MLE of $\mu$**
+
+*Differentiate of log-likelihood function with respect to* \( \mu \) *equals to zero:*
+\begin{align*}
+   \ell(x|\mu, \sigma) &= -\frac{n}{2}\log(2\pi) - n\log\sigma - \frac{1}{2\sigma^2} \sum_{i=1}^n (x_i - \mu)^2 \\
+   \frac{\partial \ell}{\partial \mu} &= -\frac{1}{2\sigma^2} \frac{\partial}{\partial \mu} \sum_{i=1}^n (x_i - \mu)^2 \\
+   0 &= -\frac{1}{2\sigma^2} \sum_{i=1}^n 2(x_i - \mu)(-1) \\
+   0 &= \frac{1}{\sigma^2} \sum_{i=1}^n (x_i - \mu) \\
+   0 &= \frac{1}{\sigma^2} \left( \sum_{i=1}^n x_i - n\mu \right) \\
+   0 &= \sum_{i=1}^n x_i - n\mu \\
+   \mu &= \frac{1}{n} \sum_{i=1}^n x_i \\
+       &= \bar{x}
+\end{align*}
+  
+**Find the MLE of $\sigma$**
+
+*Differentiating the log-likelihood function with respect to* \( \sigma \) *equals to zero:*
+
+\begin{align*}
+   \frac{\partial \ell}{\partial \sigma} &= -\frac{n}{\sigma} + \frac{1}{\sigma^3} \sum_{i=1}^n (x_i - \mu)^2 \\
+   0 &= -\frac{n}{\sigma} + \frac{1}{\sigma^3} \sum_{i=1}^n (x_i - \mu)^2 \\
+   n\sigma^2 &= \sum_{i=1}^n (x_i - \mu)^2 \\
+   \sigma^2 &= \frac{1}{n} \sum_{i=1}^n (x_i - \mu)^2 \\
+   \sigma &= \sqrt{\frac{1}{n} \sum_{i=1}^n (x_i - \mu)^2}
+\end{align*}
+
+*Since* \( \mu = \bar{x} \), *therefore:*
+
+\begin{align*}
+   \sigma &= \sqrt{\frac{1}{n} \sum_{i=1}^n (x_i - \bar{x})^2}\\
+\end{align*}
+
+**Compute the sample mean and sample standard deviation**
+
+Based on the derived formula, we can compute the sample mean ($\mu$) and sample standard deviation ($\sigma$) using Penguin data set for both the Gentoo & Chinstrap group and the Adelie group as shown in the table below.
+
+```{r, echo=FALSE}
+penguins_group <- penguins %>%
+  mutate(group = ifelse(species %in% c("Gentoo", "Chinstrap"), "Gentoo_Chinstrap", "Adelie"))
+
+df_genchin <- penguins_group[penguins_group$group == "Gentoo_Chinstrap", ]
+df_adelie <- penguins_group[penguins_group$group == "Adelie", ]
+
+mu_genchin <- mean(df_genchin$bill_length_mm)
+sigma_genchin <- sqrt(mean((df_genchin$bill_length_mm - mu_genchin)^2))
+
+mu_adelie <- mean(df_adelie$bill_length_mm)
+sigma_adelie <- sqrt(mean((df_adelie$bill_length_mm - mu_adelie)^2))
+
+# Display the results
+mle_results <- data.frame(
+  Group = c("Gentoo & Chinstrap", "Adelie"),
+  Mean = c(mu_genchin, mu_adelie),
+  SD = c(sigma_genchin, sigma_adelie)
+)
+mle_results
+```
+
+## 2.2 Normal curves and sample histograms observation
+Refer to section 2.1, we have already calculate the $\mu$ and $\sigma$ for each distribution curve. In this section, we attempt to overlay the normal curve onto the sample histograms to visually inspect whether the normal distribution adequately captures the sample data.
+
+```{r,fig.align = 'center', echo = FALSE, fig.width=10, fig.height=2.5}
+genchin_overlay <- ggplot(df_genchin, aes(x = bill_length_mm)) +
+  geom_histogram(aes(y = after_stat(density)), binwidth = 0.7, color = "black", fill = "#ffffbf", alpha = 0.7) +
+  stat_function(fun = dnorm, args = list(mean = mu_genchin, sd = sigma_genchin), color = "black", linewidth = 1) +
+  labs(title = "Gentoo and Chinstrap Penguins",
+       x = "Bill Length (mm)",
+       y = "Density") +
+  theme_minimal() + theme(plot.title = element_text(hjust = 0.5))
+
+adelie_overlay <- ggplot(df_adelie, aes(x = bill_length_mm)) +
+  geom_histogram(aes(y = after_stat(density)), binwidth = 0.7, color = "black", fill = "#fc8d59", alpha = 0.7) +
+  stat_function(fun = dnorm, args = list(mean = mu_adelie, sd = sigma_adelie), color = "black", linewidth = 1) +
+  labs(title = "Adelie Penguins",
+       x = "Bill Length (mm)",
+       y = "Density") +
+  theme_minimal() + theme(plot.title = element_text(hjust = 0.5))
+
+grid.arrange(genchin_overlay, adelie_overlay, ncol = 2)
+```
+Overall, the normal curve is a reasonable distribution for Gentoo and Chinstrap penguins, as it generally fits the shape of the data. However, there are deviations at the tails, and the peak of the data does not appear at the sample mean suggesting that they might have alternative distribution that better fit to this data set. Additionally, the normal curve does not fit well for the Adelie species, as the sample histograms show skewness in the data. To further explore the performance of the normal curve fitting, good-fitting test will be conducted in the next section.
+
+## 2.3 Good-fitting test
+To explore whether normal distribution is appropriate to fit these data, the quantile-quantile plots is created for visually inspect as shown in the plot below.
+
+```{r,fig.align = 'center', echo = FALSE, fig.width=10, fig.height=3.5}
+qq_norm_genchin <- ggplot(df_genchin, aes(sample = bill_length_mm)) +
+  stat_qq() +
+  stat_qq_line(color = 'gray') +
+  labs(title = "Q-Q Plot for Gentoo and Chinstrap Penguins") +
+  theme_minimal() +
+  scale_x_continuous(name = "Theoretical Quantiles", limits = c(-3, 3)) +
+  scale_y_continuous(name = "Sample Quantiles", limits = c(39, 60)) +
+  theme(plot.title = element_text(hjust = 0.5))
+
+
+qq_norm_adelie <- ggplot(df_adelie, aes(sample = bill_length_mm)) +
+  stat_qq() +
+  stat_qq_line(color = 'gray') +
+  labs(title = "Q-Q Plot for Adelie Penguins") +
+  theme_minimal() +
+  scale_x_continuous(name = "Theoretical Quantiles", limits = c(-3, 3)) +
+  scale_y_continuous(name = "Sample Quantiles", limits = c(30, 50)) +
+  theme(plot.title = element_text(hjust = 0.5))
+
+grid.arrange(qq_norm_genchin, qq_norm_adelie, ncol = 2)
+```
+The Q-Q plot for Gentoo and Chinstrap Penguins shows that most of the data points close to the identity line, meaning that this data set may follow the normal distribution. However, some deviations are observed at the tail. Thus, we cannot confirm that this parameter is well fit with normal distribution by using the Q-Q plot alone. Furthermore, for the Adelie species, we can easily observe that most of the data points are deviated from the identity line, suggesting that the normal distribution might not the appropriate distribution for Adelie penguins. As the Q-Q plot is the visual inspection, the interpretation is depending on individual perspective. Therefore, we further investigate the normality using Shapiro-Wilk technique.
+
+The Shapiro-Wilk test is normally used to test the normality of data in the small sample size which appropriate for our data set. The Shapiro-Wilk test assuming that parent distribution is normal ($H_0$), while the alternative hypothesis ($H_A$) suggests that the data are not normally distributed.
+
+```{r, echo=FALSE, include= FALSE}
+shapiro.test(df_genchin$bill_length_mm)
+shapiro.test(df_adelie$bill_length_mm)
+```
+
+The result of Shapiro-Wilk normality test of Gentoo and Chinstrap species shows the $p-$value of 0.06245 which mean that there is slight evidence against null hypothesis but cannot reject it. In another hand, the result of Adelie species also shows the $p-$value of 0.3618 that greater than 0.1 which indicating that there is no significant evidence to reject the assumption that data follow a normal distribution. 
+
+In summary, the normal distribution appears to be a reasonable model for bill lengths in Gentoo and Chinstrap species while we cannot assume that the normal curve is a good fit for Adelie species. Although, the result from Shapiro-Wilk suggests that the Adelie data potentially follows a normal distribution but we can notice that the data is not fit well from overlaying the normal curve on the sample distribution and Q-Q plot. This discrepancy may contributed from the presence of outliers and skewness in the data. Therefore, further testing with alternative distributions can improve the model fit, especially in the presence of outliers or skewness. Additionally, our analysis was conducted on a relatively small data set, which may not fully reflect the true nature of the data. Collecting a larger sample size will help provide a more accurate representation of the distribution.
+
+# Determining the sex of penguins
+Refer to section 1.3, there is some overlap between male and female penguins in the flipper length and body mass parameters, suggesting that these two parameters cannot reliably distinguish the sex of penguins. Therefore, the bill length and bill depth parameters are selected for further exploration in this section.
+
+```{r,fig.align = 'center', echo = FALSE, fig.width=12, fig.height=4}
+custom_colors <- c("female" = "#f1a340",
+                   "male" = "#998ec3")
+
+bill_legnth_dist <- ggplot(penguins, aes(x = bill_length_mm, fill = sex)) +
+  geom_density(alpha = 0.7, color = "black") +
+  labs(title = "Density Plot of Bill Length by Sex and Species",
+       x = "Bill Legnth (mm)",
+       y = "Density") +
+  facet_wrap(~ species) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_fill_manual(values = custom_colors)
+
+bill_depth_dist <- ggplot(penguins, aes(x = bill_depth_mm, fill = sex)) +
+  geom_density(alpha = 0.7, color = "black") +
+  labs(title = "Density Plot of Bill Depth by Sex and Species",
+       x = "Bill Depth (mm)",
+       y = "Density") +
+  facet_wrap(~ species) +
+  xlim(12, 22) + theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_fill_manual(values = custom_colors)
+
+grid.arrange(bill_legnth_dist, bill_depth_dist, nrow = 2)
+```
+The distribution above shows that bill length and bill depth are the potential parameters for distinguishing the sex of a penguin, as each plot displays two distinct distributions with separate means. However, for the Chinstrap species, the two peaks are presence in bill length which might reduce its effectiveness as a sex identifier. Therefore, bill depth is selected for the two-sample $t-$test to evaluate whether the differences between males and females in this variable are statistically significant.
+
+## 3.1 Two-sample $t-$test
+Before performing the two-sample $t-$test, Bartlett's test is performed to determine whether we can assume equal variances between male and female ($H_0$). Then, the two-sample $t-$test is performed which assuming that the mean of male and female are equal ($H_0$) while the alternative hypothesis ($H_A$) assumes that two groups of data have the different mean.
+
+### 3.1.1 Adelie Penguin
+
+As a result, the $p-$value from Bartlett test is equal to 0.156 which indicate that there is no significant difference in the variances between males and females. Therefore, the two-sample $t-$test is performed using the same variances setting. The result shows $p-$value equal to 2.452e-11 which is relatively small with the 95% confidence interval between -1.84 to -1.08 indicating very strong evidence to reject null hypothesis.
+
+```{r, echo=FALSE, include = FALSE}
+bartlett.test(bill_depth_mm ~ sex, data = penguins %>% filter(species == "Adelie"))
+t.test(bill_depth_mm ~ sex, data = penguins %>% filter(species == "Adelie"), var.equal = TRUE)
+```
+### 3.1.2 Chinstrap Penguin
+
+Similar to Adeile specie, we found that the $p-$value of Bartlett test in Chinstrap species is equal to 0.656 which indicate that there is no evidence against the null hypothesis. The two-sample $t-$test shows $p-$value of 4.301e-08 with the 95% confidence interval between -2.43 to -1.34. This result indicates that there is very strong evidence against null hypothesis.
+
+```{r, echo=FALSE, include=FALSE}
+bartlett.test(bill_depth_mm ~ sex, data = penguins %>% filter(species == "Chinstrap"))
+t.test(bill_depth_mm ~ sex, data = penguins %>% filter(species == "Chinstrap"), var.equal = TRUE)
+```
+
+### 3.1.3 Gentoo Penguin
+
+Lastly, we found the $p-$value from Bartlett test in Gentoo penguin is around 0.299 suggesting that there is no evidence to reject the null hypothesis. The two-sample $t-$test shows $p-$value of 4.294e-15 with the 95% confidence interval between -1.82 to -1.21 suggesting that there is very strong evidence against null hypothesis.
+
+```{r, echo=FALSE, include=FALSE}
+bartlett.test(bill_depth_mm ~ sex, data = penguins %>% filter(species == "Gentoo"))
+t.test(bill_depth_mm ~ sex, data = penguins %>% filter(species == "Gentoo"), var.equal = TRUE)
+```
+
+In conclusion, the hypothesis results across all penguin species show that the $t-$statistic is far from zero, the $p-$values are less than 0.05, and the 95% confidence intervals do not include zero which is the evidence to reject null hypothesis. This indicates a statistically significant difference between males and females in terms of bill depth, suggesting that the bill depth parameter can be used to distinguish the sex of penguins across all species. However, individual models are required for each species to account for variations unique to each group.
+
+# Impact of island and physical characteristic of penguin
+The physical characteristics of penguins mostly depend on their species. However, habitat location may also influence their physical characteristic. In this section, we will analyze the impact of island that affect to the physical characteristic of penguin focusing on only the Adelie species, as it is the only species in this data set that found across multiple islands (see section 1.1).
+
+Refer to section 1.2, the box plot of body mass shows that overall median of all variables are close too each other across all island. However, other variables, the median and distribution are slightly different in each island. Therefore, bill length, bill depth and flipper length are selected to apply the hypothesis testing in this report.
+
+As there are three parameters to be observed, two-sample $t-$test will be performed in each pair of island. Similar to the previous section, Bartlett test will be performed before the two-sample $t-$test to find the appropriate setting of hypothesis test. Then, the two-sample $t-$test will be performed. The null hypothesis ($H_0$) assuming that the mean of each parameters in each islands is equal while the alternative hypothesis ($H_A$) assuming that the mean between two group is difference.
+
+## 4.1 Two-sample $t-$test of bill length
+### 4.1.1 Biscoe and Dream islands
+For the two-sample $t-$test result, the t-statistic is very close to zero and the $p-$value is around 0.9955 which higher than 0.05. Moreover, the 95% confidence interval is ranged between -1.223 to 1.216 that include zero value. Therefore, there is no significant evidence to reject null hypothesis suggesting that the bill length of two group of island has no significantly difference.
+
+```{r, echo=FALSE, include = FALSE}
+bartlett.test(bill_length_mm ~ island, data = df_adelie %>% filter(island != "Torgersen"))
+t.test(bill_length_mm ~ island, data = df_adelie %>% filter(island != "Torgersen"), var.equal = TRUE)
+```
+
+### 4.1.2 Biscoe and Torgersen islands
+The result from two-sample $t-$test shows the $p-$value around 0.1215 which greater than 0.05, with the 95% confidence interval between -2.762 to 0.334 that contains zero. These indicate that there is no evidence against null hypothesis.
+
+```{r, echo=FALSE, include=FALSE}
+bartlett.test(bill_length_mm ~ island, data = df_adelie %>% filter(island != "Dream"))
+t.test(bill_length_mm ~ island, data = df_adelie %>% filter(island != "Dream"), var.equal = TRUE)
+```
+
+### 4.1.3 Dream and Torgersen islands
+The result shows $p-$value of 0.094 that higher than 0.05 with the 95% confidence interval between -2.632 to 0.211. Therefore, there is no significant evidence to reject null hypothesis indicating that the bill length of penguin living in Dream islands and Torgersen islands is not difference from each other.
+
+```{r, echo=FALSE, include=FALSE}
+bartlett.test(bill_length_mm ~ island, data = df_adelie %>% filter(island != "Biscoe"))
+t.test(bill_length_mm ~ island, data = df_adelie %>% filter(island != "Biscoe"), var.equal = TRUE)
+```
+In short, refer to the result from hypothesis testing, there is no evidence to support that habitat of penguins impact to bill length characteristic.
+
+## 4.2 Two-sample $t-$test of bill depth
+### 4.2.1 Biscoe and Dream islands
+As a result, the t-statistic is very close to zero with relatively high $p-$value around 0.9114 and 95% confidence interval is ranged between -0.569 to 0.508. Therefore, there is no significant evidence to reject null hypothesis suggesting that the bill depth between Biscoe and Dream island has no significantly difference.
+
+```{r, echo=FALSE, include = FALSE}
+bartlett.test(bill_depth_mm ~ island, data = df_adelie %>% filter(island != "Torgersen"))
+t.test(bill_depth_mm ~ island, data = df_adelie %>% filter(island != "Torgersen"), var.equal = TRUE)
+```
+
+### 4.2.2 Biscoe and Torgersen islands
+The result from two-sample $t-$test shows the $p-$value around 0.20 which greater than 0.05, with the 95% confidence interval between -1.092 to 0.234 which indicate that there is no evidence against null hypothesis.
+
+```{r, echo=FALSE, include=FALSE}
+bartlett.test(bill_depth_mm ~ island, data = df_adelie %>% filter(island != "Dream"))
+t.test(bill_depth_mm ~ island, data = df_adelie %>% filter(island != "Dream"), var.equal = TRUE)
+```
+
+### 4.2.3 Dream and Torgersen islands
+The result shows $p-$value of 0.209 that higher than 0.05 with the 95% confidence interval between -1.027 to 0.229. Thus, there is no evidence to reject null hypothesis indicating that the bill depth of penguin living in Dream islands and Torgersen islands is not difference from each other.
+
+```{r, echo=FALSE, include=FALSE}
+bartlett.test(bill_depth_mm ~ island, data = df_adelie %>% filter(island != "Biscoe"))
+t.test(bill_depth_mm ~ island, data = df_adelie %>% filter(island != "Biscoe"), var.equal = TRUE)
+```
+In summary, the bill depth characteristics of Adelie penguins living in Biscoe, Dream and Torgersen islands is not significantly difference.
+
+## 4.3 Two-sample $t-$test of flipper length
+### 4.3.1 Biscoe and Dream islands
+For the two-sample $t-$test, we found the t-statistic of -1.182 that close to zero and the $p-$value is around 0.2417 which greater than 0.05. Moreover, the 95% confidence interval is ranged between -5.356 - 1.375 that include zero value. Therefore, there is no significant evidence to reject null hypothesis indicating that the flipper length of penguins that live in Biscoe and Dream island has no significantly difference.
+
+```{r, echo=FALSE, include = FALSE}
+bartlett.test(flipper_length_mm ~ island, data = df_adelie %>% filter(island != "Torgersen"))
+t.test(flipper_length_mm ~ island, data = df_adelie %>% filter(island != "Torgersen"), var.equal = TRUE)
+```
+
+### 4.3.2 Biscoe and Torgersen islands
+The result from two-sample $t-$test shows the $p-$value around 0.01126 which less than 0.05, with the 95% confidence interval between -7.84 to -1.05 that not contains zero. These indicate that there is a moderate evidence against null hypothesis suggesting that the flipper length between Biscoe and Torgersen island seem different from each other.
+
+```{r, echo=FALSE, include=FALSE}
+bartlett.test(flipper_length_mm ~ island, data = df_adelie %>% filter(island != "Dream"))
+t.test(flipper_length_mm ~ island, data = df_adelie %>% filter(island != "Dream"), var.equal = TRUE)
+```
+
+### 4.3.3 Dream and Torgersen islands
+The result shows t-statistic close to zero and $p-$value of 0.185 that greater than 0.05 with the 95% confidence interval between -6.11 to 1.21. Therefore, there is no significant evidence to reject null hypothesis suggesting that the flipper length of penguin living in Dream and Torgersen islands is not difference from each other.
+
+```{r, echo=FALSE, include=FALSE}
+bartlett.test(flipper_length_mm ~ island, data = df_adelie %>% filter(island != "Biscoe"))
+t.test(flipper_length_mm ~ island, data = df_adelie %>% filter(island != "Biscoe"), var.equal = TRUE)
+```
+
+In conclusion, there are limited evidence that the habitat island significantly affect their physical characteristics of penguin. Only the comparison between Biscoe and Torgersen islands shows moderate evidence of a difference in flipper length between two groups of penguin.
+
+# Conclusion
+Normal distribution is a reasonable distribution to fit bill lengths parameter of Gentoo and Chinstrap species but it might not be the good choice for Adelie species even though the result from Shapiro-Wilk test suggest that its normality because we can obviously see the deviation of data points in Q-Q plot and normal curve fitting plot. In addition, we found that bill depth is one of the parameters that can distinguish the sex of penguins, as evidenced by both visual inspection and result from hypothesis testing. Lastly, only a moderate difference in flipper length was found between penguins living in Biscoe and Torgersen islands, while there is no evidence supporting that habitat islands significantly affect the bill length and bill depth of penguins.
+
+However, this statistical tests were conducted using only 200 samples which relatively small, especially when segmented into each species. Consequently, the result that shown in this report might not fully reflect the true nature of the data because the distribution might be bias from the samples. For further improvement, collecting and using more data for re-analysis is the key improvement to gain the better accuracy of distribution assumption.
+
+# Reference
+
+Lee, Clement. (2024). Statistical Foundations of Data Science [Class handout]. Newcastle University, MAS8403/8407.
+
+Verzani, John. Using R for Introductory Statistics, CRC Press LLC, 2014. ProQuest Ebook Central, https://ebookcentral.proquest.com/lib/ncl/detail.action?docID=1619952.
+
+Colorbrewer 2.0. ColorBrewer. (2002). https://colorbrewer2.org/#type=sequential&scheme=PuBuGn&n=4 
